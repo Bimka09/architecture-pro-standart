@@ -1,0 +1,63 @@
+@startuml
+!include <C4/C4_Container>
+
+title System Container Diagram - Bank Standard (Deposits)
+
+Person(user, "Client", "Client whants to open a deposit")
+Person(backOfficeManager, "Back-Office Credit Manager", "Analyze credit risk for personal deposit rates")
+
+' Main system
+System_Boundary(bank, "Bank Standard") {
+
+    Container(site, "Bank Site", "PHP, React.js", "Allows unauthenticated users to send deposit requests")
+    Container(internetBank, "Internet Bank", "ASP.NET MVC 4.5",  "Allows authenticated users see personalized deposit rates and applicate them")
+
+    Container(depositProcessingSvc, "Deposit Application Service",  "Java / REST / Kafka Producer", "Handles deposit requests")
+    Container(rateProcessingSvc, "Rate Management Service", "", "Handles deposit rates")
+
+    Container(notificationSvc, "Notification Service", "Java / REST / Kafka Consumer", "SMS confirmations and notifications")
+
+    Container(callCenterUI, "Call Center Web App",  "React", "Operator workplace")
+    Container(callCenterBack, "Call Center Backend",  "Java Spring Boot", "Processes leads and client contact requests")
+    ContainerDb(callCenterDb, "Call Center DB", "PostgreSQL", "")
+
+    Container(abcUI, "ABS UI", "Desktop App, Delphi", "Back-office manager's workplace")
+    ContainerDb(abcDb, "ABS DB", "Oracle,  PL-SQL", "Core banking DB with PL-SQL procedures")
+    
+    Container(kafka, "Kafka", "Message Broker",  "Asynchronous communication")
+}
+
+System_Ext(telecomOperator, "Telecom Operator", "SMS gateway")
+System_Ext(creditBureau, "Credit Bureau", "Credit history provider")
+System_Ext(partnersCallCenter, "Partner Call Center", "External operators")
+
+' Client interactions
+Rel(user, site, "Views deposits, submits request", "HTTPS")
+Rel(user, internetBank, "Views personalized deposits, applies", "HTTPS")
+
+' Deposit application flow
+Rel(site, depositProcessingSvc, "Submit deposit request", "REST / HTTPS")
+Rel(internetBank, depositProcessingSvc, "Submit deposit application", "REST / HTTPS")
+Rel(internetBank, rateProcessingSvc, "Get personal rates", "REST / HTTPS")
+Rel(depositProcessingSvc, kafka, "Publishes deposit application", "Kafka")
+
+' Deposit rates
+Rel(backOfficeManager, rateProcessingSvc, "Define personal rates", "REST / HTTP")
+Rel(backOfficeManager, abcDb, "Approve deposit rate", "")
+Rel(rateProcessingSvc, abcDb, "Send deposit rates", "REST / HTTP")
+
+' Call center
+Rel(depositProcessingSvc, callCenterBack, "Create lead", "REST")
+Rel(callCenterBack, callCenterDb, "Reads/Writes")
+Rel(callCenterUI, callCenterBack, "")
+Rel(callCenterBack, partnersCallCenter, "Delegate calls")
+
+' ABC
+Rel(abcDb, kafka, "Deposit opened event")
+Rel(abcUI, abcDb, "Back-office processing")
+
+' Notifications
+Rel(notificationSvc, kafka, "Consume notification event")
+Rel(notificationSvc, telecomOperator, "Send SMS")
+
+@enduml
