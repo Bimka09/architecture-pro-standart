@@ -1,0 +1,78 @@
+@startuml
+!include <C4/C4_Container>
+
+title System Container Diagram - Bank Standard (Deposits)
+
+Person(user, "Client", "Client whants to open a deposit")
+Person(backOfficeManager, "Back-Office Credit Manager", "Analyze credit risk for personal deposit rates")
+
+' Main system
+System_Boundary(bank, "Bank Standard") {
+
+    Container(site, "Bank Site", "PHP, React.js", "Allows unauthenticated users to send deposit requests")
+    Container(internetBank, "Internet Bank", "ASP.NET MVC 4.5",  "Allows authenticated users see personalized deposit rates and applicate them")
+
+    Container(apiGateway, "API Gateway", "Nginx", "Routes Requests")
+
+    Container(depositProcessingSvc, "Deposit Processing Service",  "Java / REST / Kafka Producer", "Handles deposit requests")
+    ContainerDb(depositProcessingDb, "Deposits Processing Db", "MS SQL", "")
+
+    Container(rateProcessingSvc, "Rate Management Service", "", "Handles deposit rates")
+    ContainerDb(rateProcessingDb, "Rate Management Db", "MS SQL", "")
+
+    Container(notificationSvc, "Notification Service", "Java / REST / Kafka Consumer", "SMS confirmations and notifications")
+
+    Container(callCenterUI, "Call Center Web App",  "React", "Operator workplace")
+    Container(callCenterBack, "Call Center Backend",  "Java Spring Boot", "Processes leads and client contact requests")
+    ContainerDb(callCenterDb, "Call Center Db", "PostgreSQL", "")
+
+    Container(integrationSvc, "Integration Service", "Java Spring Boot", "Integrations with legacy systems")
+
+    Container(abcUI, "ABS UI", "Desktop App, Delphi", "Back-office manager's workplace")
+    ContainerDb(abcDb, "ABS DB", "Oracle,  PL-SQL", "Core banking DB with PL-SQL procedures")
+    
+    Container(kafka, "Kafka", "Message Broker",  "Asynchronous communication")
+}
+
+System_Ext(telecomOperator, "Telecom Operator", "SMS gateway")
+System_Ext(partnersCallCenter, "Partner Call Center", "External operators")
+
+' Client interactions
+Rel(user, site, "Views deposits, submits request", "HTTPS")
+Rel(user, internetBank, "Views personalized deposits, applies", "HTTPS")
+
+' Routes
+Rel(site, apiGateway, "Submit deposit request", "REST / HTTPS")
+Rel(internetBank, apiGateway, "Submit deposit application", "REST / HTTPS")
+Rel(internetBank, apiGateway, "Get personal rates", "REST / HTTPS")
+
+' Deposit application flow
+Rel(apiGateway, depositProcessingSvc, "Routes", "REST / HTTP")
+Rel(apiGateway, rateProcessingSvc, "Routes", "REST / HTTP")
+Rel(depositProcessingSvc, kafka, "Push events: deposit.application, deposit.request.new", "Kafka")
+Rel(depositProcessingSvc, depositProcessingDb, "Read / Write")
+
+' Deposit rates
+Rel(backOfficeManager, rateProcessingSvc, "Define personal rates", "REST / HTTP")
+Rel(backOfficeManager, abcDb, "Approve deposit rate", "")
+Rel(rateProcessingSvc, abcDb, "Send deposit rates", "REST / HTTP")
+Rel(rateProcessingSvc, rateProcessingDb, "Read / Write", "")
+
+' Call center
+Rel(callCenterBack, kafka, "Consume events: deposit.request.new")
+Rel(callCenterBack, callCenterDb, "Reads/Writes")
+Rel(callCenterUI, callCenterBack, "")
+Rel(callCenterBack, partnersCallCenter, "Delegate calls")
+
+' ABC
+Rel(abcUI, abcDb, "Back-office processing")
+
+' Integrations
+Rel(integrationSvc, abcDb, "Get/Push deposit events")
+Rel(integrationSvc, kafka, "Consume events: deposit.request.new")
+
+' Notifications
+Rel(notificationSvc, kafka, "Consume notification event")
+Rel(notificationSvc, telecomOperator, "Send SMS")
+
+@enduml

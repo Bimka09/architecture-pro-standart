@@ -1,0 +1,65 @@
+@startuml
+!include <C4/C4_Container>
+
+title System Container Diagram - Bank Standard (Credit)
+
+Person(user, "Client", "Client whants to get a credit")
+
+' Main system
+System_Boundary(bank, "Bank Standard") {
+
+    Container(site, "Bank Site", "PHP, React.js", "Allows unauthenticated users to send cre requests")
+    Container(internetBank, "Internet Bank", "ASP.NET MVC 4.5",  "Allows authenticated users see pre-approved creadits and applicate for them")
+
+    Container(apiGateway, "API Gateway", "Nginx", "Routes Requests")
+
+    Container(creditProcessingSvc, "Credit Processing Service",  "Java / REST / Kafka Producer", "Handles credit applications. Initiate preapproval credit process")
+    ContainerDb(creditProcessingDb, "Credit Processing Db", "MS SQL", "")
+
+    Container(notificationSvc, "Notification Service", "Java / REST / Kafka Consumer", "SMS confirmations and notifications")
+
+    Container(integrationSvc, "Integration Service", "Java Spring Boot", "Integration with ABC systems")
+
+    Container(creditConveyor, "Credit Conveyor", "Camunda", "Processing credit's requests")
+    ContainerDb(creditConveyorDb, "Credit Conveyor DB", "Oracle", "")
+
+    Container(creditScoring, "Credit Scoring Service",  "Python / Flask", "Calculates credit risks")
+    ContainerDb(creditScoringDb, "Credit Scoring DB", "PostgreSQL", "Persist scoring data")
+
+    ContainerDb(abcDb, "ABS DB", "Oracle,  PL-SQL", "Core banking DB with PL-SQL procedures")
+    
+    Container(kafka, "Kafka", "Message Broker",  "Asynchronous communication")
+}
+
+System_Ext(telecomOperator, "Telecom Operator", "SMS gateway")
+System_Ext(creditBureau, "Credit Bureau", "Credit history provider")
+
+' Client interactions
+Rel(user, site, "Views credits, submits request", "HTTPS")
+Rel(user, internetBank, "Views personalized credits, applies", "HTTPS")
+
+' Routes
+Rel(site, apiGateway, "Submit credit request", "REST / HTTPS")
+Rel(internetBank, apiGateway, "Submit credit application", "REST / HTTPS")
+Rel(internetBank, apiGateway, "Get personal preapproved credits and personal rates", "REST / HTTPS")
+
+' Credit application flow
+Rel(apiGateway, creditProcessingSvc, "Routes", "REST / HTTP")
+Rel(creditProcessingSvc, kafka, "Push events: credit.request.notificate, credit.request.application, credit.request.pre.application", "Kafka")
+Rel(creditProcessingSvc, creditProcessingDb, "Read / Write")
+Rel(creditConveyor, kafka, "Consume events: credit.request.application. Push events: credit.request.decision")
+Rel(creditConveyor, creditScoring, "Get scorring", "REST / HTTP")
+Rel(creditConveyor, creditConveyorDb, "Read / Write")
+Rel(creditScoring, creditScoringDb, "Read / Write")
+Rel(creditScoring, abcDb, "Get user's data")
+Rel(creditScoring, creditBureau, "Get user's data")
+
+' Integrations
+Rel(integrationSvc, kafka, "Consume events: credit.request.decision")
+Rel(integrationSvc, abcDb, "Sync credit's data 1 time per day")
+
+' Notifications
+Rel(notificationSvc, kafka, "Consume events: credit.request.notificate")
+Rel(notificationSvc, telecomOperator, "Send SMS")
+
+@enduml
