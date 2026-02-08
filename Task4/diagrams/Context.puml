@@ -1,0 +1,20 @@
+@startuml
+!include <C4/C4_Context>
+
+title System Context Diagram – Bank Standard (Deposits)
+
+Person(user, "Client", "Сlient who opens and manages deposits")
+
+System(bank, "Bank Standard", "Banking system providing deposit products, onboarding, and servicing")
+
+System_Ext(telecomOperator, "Telecom Operator", "Provides SMS/Voice services for OTP, notifications, and client verification")
+System_Ext(creditBureau, "Credit story's bureau", "Provdies info about user's credits")
+System_Ext(partnersCallCenter, "Partner Call Center", "External call center handling client support, sales assistance, and verification calls")
+
+Rel(user, bank, "Browses deposit offers, opens deposits, signs documents, manages accounts", "Web / Personal contact")
+Rel(bank, telecomOperator, "Notifications, delivery status exchange", "SMS")
+Rel(bank, partnersCallCenter, "Transfers leads, verification tasks, and support cases", "API")
+Rel(partnersCallCenter, bank, "Returns verification results and deposit opening requests", "API")
+Rel(bank, creditBureau, "Requests for user's credits data", "API")
+
+@enduml

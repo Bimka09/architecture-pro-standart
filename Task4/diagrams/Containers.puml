@@ -55,11 +55,12 @@ Rel(depositProcessingSvc, depositProcessingDb, "Read / Write")
 ' Deposit rates
 Rel(backOfficeManager, rateProcessingSvc, "Define personal rates", "REST / HTTP")
 Rel(backOfficeManager, abcDb, "Approve deposit rate", "")
-Rel(rateProcessingSvc, abcDb, "Send deposit rates", "REST / HTTP")
+Rel(rateProcessingSvc, kafka, "Send events: deposit.rates.updated", "Kafka")
 Rel(rateProcessingSvc, rateProcessingDb, "Read / Write", "")
+Rel(rateProcessingSvc, abcDb, "Get data", "")
 
 ' Call center
-Rel(callCenterBack, kafka, "Consume events: deposit.request.new")
+Rel(callCenterBack, kafka, "Consume events: deposit.rates.updated, deposit.request.new")
 Rel(callCenterBack, callCenterDb, "Reads/Writes")
 Rel(callCenterUI, callCenterBack, "")
 Rel(callCenterBack, partnersCallCenter, "Delegate calls")
@@ -69,7 +70,8 @@ Rel(abcUI, abcDb, "Back-office processing")
 
 ' Integrations
 Rel(integrationSvc, abcDb, "Get/Push deposit events")
-Rel(integrationSvc, kafka, "Consume events: deposit.request.new")
+Rel(integrationSvc, partnersCallCenter, "Send actual deposit rates", "SFTP")
+Rel(integrationSvc, kafka, "Consume events: deposit.rates.updated, deposit.request.new")
 
 ' Notifications
 Rel(notificationSvc, kafka, "Consume notification event")
